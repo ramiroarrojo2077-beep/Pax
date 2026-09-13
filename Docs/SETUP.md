@@ -54,9 +54,18 @@ make PaxEditor
    - *Import Mesh*: **sí**, *Skeleton*: vacío (se crea uno nuevo)
    - *Convert Scene*: **sí**, *Force Front X Axis*: **no**
    - *Import Uniform Scale*: **1.0**
-3. Crear un Blueprint derivado de `F1Car`, asignarle la malla esqueletal
-   importada y ponerlo en `CarClass` del GameMode (o en el Blueprint del
-   GameMode). Sin esto el coche corre con su malla vacía y el log avisa.
+3. Crear un Blueprint derivado de `F1Car` (por ejemplo `/Game/Pax/BP_F1Car`),
+   asignarle la malla esqueletal importada y su Animation Blueprint, y
+   apuntarlo desde `Config/DefaultGame.ini`:
+
+   ```ini
+   [/Script/Pax.PaxGameMode]
+   CarClass=/Game/Pax/BP_F1Car.BP_F1Car_C
+   ```
+
+   El sufijo `_C` es obligatorio: lo que se pide es la *clase* del Blueprint,
+   no el asset. Sin esto el coche corre con su malla vacía —Chaos necesita los
+   huesos de las ruedas para simular— y el log avisa al arrancar.
 4. Crear un nivel. El template **Basic** vale tal cual: trae luz direccional,
    cielo, niebla y luz ambiental. Basta con borrar el suelo (`Floor`).
 

@@ -18,7 +18,7 @@ class ATrackSpline;
  * nada del nivel:
  *   ?Laps=20?Opponents=15?Difficulty=0.95
  */
-UCLASS()
+UCLASS(Config = Game)
 class PAX_API APaxGameMode : public AGameModeBase
 {
 	GENERATED_BODY()
@@ -57,30 +57,36 @@ protected:
 	/** Luces fuera: empieza la carrera. */
 	void StartRace();
 
-	UPROPERTY(EditDefaultsOnly, Category = "Pax|Race", meta = (ClampMin = "1"))
+	UPROPERTY(EditDefaultsOnly, Config, Category = "Pax|Race", meta = (ClampMin = "1"))
 	int32 NumberOfLaps = 5;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Pax|Race", meta = (ClampMin = "0", ClampMax = "19"))
+	UPROPERTY(EditDefaultsOnly, Config, Category = "Pax|Race", meta = (ClampMin = "0", ClampMax = "19"))
 	int32 NumberOfOpponents = 9;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Pax|Race", meta = (ClampMin = "0.0", ClampMax = "1.0"))
+	UPROPERTY(EditDefaultsOnly, Config, Category = "Pax|Race", meta = (ClampMin = "0.0", ClampMax = "1.0"))
 	float AIDifficulty = 0.85f;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Pax|Race")
+	UPROPERTY(EditDefaultsOnly, Config, Category = "Pax|Race")
 	bool bFormationLap = false;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Pax|Race")
+	UPROPERTY(EditDefaultsOnly, Config, Category = "Pax|Race")
 	bool bTrackLimitsEnabled = true;
 
-	UPROPERTY(EditDefaultsOnly, Category = "Pax|Race")
+	UPROPERTY(EditDefaultsOnly, Config, Category = "Pax|Race")
 	int32 TrackLimitWarningsBeforePenalty = 3;
 
-	/** Clase de monoplaza para el jugador y para la IA. */
-	UPROPERTY(EditDefaultsOnly, Category = "Pax|Race")
+	/**
+	 * Clase de monoplaza para el jugador y para la IA.
+	 *
+	 * Se configura desde Config/DefaultGame.ini con la ruta del Blueprint que
+	 * lleva la malla exportada de Blender, así no hace falta crear además un
+	 * Blueprint del GameMode sólo para asignarla.
+	 */
+	UPROPERTY(EditDefaultsOnly, Config, Category = "Pax|Race")
 	TSubclassOf<AF1Car> CarClass;
 
 	/** Segundos entre luz y luz del semáforo. */
-	UPROPERTY(EditDefaultsOnly, Category = "Pax|Race")
+	UPROPERTY(EditDefaultsOnly, Config, Category = "Pax|Race")
 	float LightIntervalSeconds = 1.f;
 
 private:

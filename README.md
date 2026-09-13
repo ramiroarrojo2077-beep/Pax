@@ -46,9 +46,11 @@ adb install -r Build/Android/Pax-Android-Development-arm64.apk
 ```
 
 Antes del paso 3 hay que hacer dos cosas una vez en el editor: importar el FBX
-del coche y crear su Blueprint, y guardar un nivel (vale el template **Basic**
-sin el suelo). El **circuito no hace falta colocarlo**: si el nivel no trae
-ninguno, el juego crea uno y se construye su propia calzada con colisión.
+del coche, crear su Blueprint y apuntarlo desde `Config/DefaultGame.ini`
+(`CarClass=/Game/Pax/BP_F1Car.BP_F1Car_C`), y guardar un nivel (vale el
+template **Basic** sin el suelo). El **circuito no hace falta colocarlo**: si
+el nivel no trae ninguno, el juego crea uno y se construye su propia calzada
+con colisión.
 
 Los pasos completos están en [Docs/SETUP.md](Docs/SETUP.md) y
 [Docs/ANDROID.md](Docs/ANDROID.md).

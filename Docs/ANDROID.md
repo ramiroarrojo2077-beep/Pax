@@ -37,8 +37,9 @@ editor:
 
 1. **El coche.** Importar `Tools/Blender/Build/PaxF1Car.fbx` como malla
    esqueletal, crear un Blueprint derivado de `F1Car` con esa malla y su
-   Animation Blueprint, y ponerlo en `CarClass` del GameMode. Los pasos están
-   en [SETUP.md](SETUP.md).
+   Animation Blueprint, y apuntarlo desde `Config/DefaultGame.ini` con
+   `CarClass=/Game/Pax/BP_F1Car.BP_F1Car_C`. Los pasos están en
+   [SETUP.md](SETUP.md).
 2. **Un nivel.** Vale el template **Basic** tal cual: trae luz direccional,
    cielo, niebla y luz ambiental. Sólo hay que borrar el suelo (`Floor`) y
    guardarlo, por ejemplo, como `/Game/Pax/Maps/Circuit`.
