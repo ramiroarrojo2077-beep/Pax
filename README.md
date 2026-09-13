@@ -1,7 +1,8 @@
 # Pax
 
-Juego de Fórmula 1 para **Unreal Engine 5** con los assets modelados de forma
-procedural en **Blender**.
+Juego de Fórmula 1 para **Android** (APK) hecho con **Unreal Engine 5**, con los
+assets modelados de forma procedural en **Blender**. También se juega en PC con
+teclado o mando.
 
 El proyecto es código: no hay ni un solo asset binario en el repositorio. El
 coche y el circuito se generan con scripts de Blender y se exportan a FBX; la
@@ -18,7 +19,9 @@ Source/Pax/
   AI/              piloto artificial
   UI/              panel de información del piloto
 Tools/Blender/     generador procedural de coche y circuito
-Docs/              puesta en marcha, arquitectura y pipeline de arte
+Tools/Tests/       pruebas que no necesitan ni Unreal ni Blender
+Config/Android/    ajustes de render, física y sesión para móvil
+Docs/              puesta en marcha, empaquetado del APK, arquitectura, pipeline
 ```
 
 ## Puesta en marcha rápida
@@ -32,10 +35,23 @@ blender --background --python Tools/Blender/build_assets.py -- --all
 #    Linux:   <Ruta_UE5>/GenerateProjectFiles.sh -project="$PWD/Pax.uproject" -game
 ```
 
-Después, en el editor: importar los dos FBX de `Tools/Blender/Build` en
-`/Game/Pax`, colocar un actor `TrackSpline` en el nivel y pulsar
-**Import Centerline From CSV**. Los pasos completos están en
-[Docs/SETUP.md](Docs/SETUP.md).
+```bash
+# 3. Empaquetar el APK
+<Ruta_UE5>/Engine/Build/BatchFiles/RunUAT.sh BuildCookRun \
+  -project="$PWD/Pax.uproject" -platform=Android -cookflavor=ASTC \
+  -clientconfig=Development -build -cook -stage -package -pak \
+  -archive -archivedirectory="$PWD/Build"
+
+adb install -r Build/Android/Pax-Android-Development-arm64.apk
+```
+
+Antes del paso 3 hay que hacer dos cosas una vez en el editor: importar el FBX
+del coche y crear su Blueprint, y guardar un nivel (vale el template **Basic**
+sin el suelo). El **circuito no hace falta colocarlo**: si el nivel no trae
+ninguno, el juego crea uno y se construye su propia calzada con colisión.
+
+Los pasos completos están en [Docs/SETUP.md](Docs/SETUP.md) y
+[Docs/ANDROID.md](Docs/ANDROID.md).
 
 ## Qué está modelado
 
@@ -55,16 +71,31 @@ que un F1 se conduzca como un F1.
 
 ## Controles
 
-| Acción | Teclado | Mando |
-|---|---|---|
-| Acelerar / Frenar | `W` / `S` | Gatillos |
-| Dirección | `A` / `D` | Stick izquierdo |
-| Cambio arriba / abajo | `E` / `Q` | `RB` / `LB` |
-| DRS | `Espacio` | `A` |
-| Modo de ERS | `1` | `X` |
-| Mezcla de combustible | `2` | `B` |
-| Cámara | `C` | `Y` |
-| Volver a pista | `R` | Start |
+| Acción | Móvil | Teclado | Mando |
+|---|---|---|---|
+| Acelerar / Frenar | Pedales abajo a la derecha | `W` / `S` | Gatillos |
+| Dirección | Volante flotante, mitad inferior izquierda | `A` / `D` | Stick izquierdo |
+| Cambio arriba / abajo | Levas sobre los pedales | `E` / `Q` | `RB` / `LB` |
+| DRS | Botón ancho de la fila | `Espacio` | `A` |
+| Modo de ERS | `ERS` | `1` | `X` |
+| Mezcla de combustible | `MIX` | `2` | `B` |
+| Cámara | `CAM` | `C` | `Y` |
+| Volver a pista | `REC` | `R` | Start |
+
+En móvil el volante se ancla donde apoyas el pulgar, así no hay que mirar la
+pantalla para encontrarlo. También se puede conducir inclinando el teléfono
+(`SteeringMode=Tilt`). El mando en pantalla lo dibuja la propia HUD: no hay ni
+un asset de interfaz en el proyecto.
+
+## Pruebas
+
+```bash
+python3 Tools/Tests/test_track_geometry.py   # geometría del circuito y CSV
+Tools/Tests/TouchLayout/run.sh               # mando en pantalla
+```
+
+Las dos verifican los archivos reales del juego sin necesidad de tener Unreal
+ni Blender instalados. Detalles en [Tools/Tests/README.md](Tools/Tests/README.md).
 
 ## Licencia
 

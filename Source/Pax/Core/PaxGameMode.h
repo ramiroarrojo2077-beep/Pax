@@ -35,6 +35,16 @@ public:
 	int32 GetStartLightsOn() const { return StartLightsOn; }
 
 protected:
+	/**
+	 * Devuelve el circuito del nivel y, si no hay ninguno, crea uno.
+	 *
+	 * Un ATrackSpline sin configurar ya trae un trazado por defecto y sabe
+	 * construirse su propia calzada, así que con esto el juego arranca en un
+	 * nivel vacío. Es lo que permite empaquetar un APK jugable sin tener que
+	 * autorizar ningún asset de circuito.
+	 */
+	ATrackSpline* EnsureTrack();
+
 	/** Crea un monoplaza en el puesto de parrilla indicado, listo para correr. */
 	AF1Car* SpawnCarAtGrid(int32 GridPosition);
 

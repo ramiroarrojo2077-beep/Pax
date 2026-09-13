@@ -8,6 +8,9 @@
 | Blender | 3.6 LTS o superior | Sólo para regenerar los assets. |
 | Compilador | Visual Studio 2022 (Windows) / Clang 16+ (Linux) | Con la carga de trabajo de C++ para juegos. |
 
+Para generar el APK hacen falta además el SDK y el NDK de Android: eso está en
+[ANDROID.md](ANDROID.md).
+
 El módulo compila sin cambios en 5.1 y 5.2: `Pax.Build.cs` detecta la versión y
 define `PAX_HAS_WHEEL_RUNTIME_API`, que elige entre el setter de fricción en
 runtime (5.3+) y la ruta equivalente en versiones anteriores.
@@ -51,18 +54,30 @@ make PaxEditor
    - *Import Mesh*: **sí**, *Skeleton*: vacío (se crea uno nuevo)
    - *Convert Scene*: **sí**, *Force Front X Axis*: **no**
    - *Import Uniform Scale*: **1.0**
-3. Importar `PaxTrack.fbx` como *Static Mesh* con *Generate Collision*
+3. Crear un Blueprint derivado de `F1Car`, asignarle la malla esqueletal
+   importada y ponerlo en `CarClass` del GameMode (o en el Blueprint del
+   GameMode). Sin esto el coche corre con su malla vacía y el log avisa.
+4. Crear un nivel. El template **Basic** vale tal cual: trae luz direccional,
+   cielo, niebla y luz ambiental. Basta con borrar el suelo (`Floor`).
+
+A partir de ahí, *Play* ya funciona: si el nivel no trae ningún `ATrackSpline`,
+el GameMode crea uno con el trazado por defecto y el actor se construye su
+propia calzada —asfalto, pianos, escapatoria, muros y colisión— a partir de la
+spline. Después forma la parrilla, enciende el semáforo y arranca.
+
+### Usar el circuito modelado en Blender
+
+La calzada generada es geometría limpia pero desnuda. Para usar la del pipeline
+de Blender:
+
+1. Importar `PaxTrack.fbx` como *Static Mesh* con *Generate Collision*
    desactivado y, en el detalle de la malla, *Collision Complexity* →
    **Use Complex Collision As Simple**. Un circuito necesita colisión exacta;
    un casco convexo se comería los pianos.
-4. Crear un Blueprint derivado de `F1Car`, asignarle la malla esqueletal
-   importada y ponerlo en `CarClass` del GameMode (o en el Blueprint del
-   GameMode). Sin esto el coche corre con su malla vacía y el log avisa.
-5. Colocar la malla del circuito en el nivel en el origen.
-6. Añadir al nivel un actor **TrackSpline**, también en el origen, y pulsar
-   **Import Centerline From CSV** en su panel de detalles.
-
-A partir de ahí, *Play* forma la parrilla, enciende el semáforo y arranca.
+2. Colocar la malla en el nivel, en el origen.
+3. Añadir un actor **TrackSpline**, también en el origen, pulsar
+   **Import Centerline From CSV** en su panel de detalles y desactivar
+   `bBuildRuntimeMesh` para que no genere la suya encima.
 
 ## 4. Animation Blueprint del coche
 

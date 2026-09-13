@@ -2,6 +2,11 @@
 	"FileVersion": 3,
 	"EngineAssociation": "5.5",
 	"Category": "Racing",
+	"SupportedTargetPlatforms": [
+		"Windows",
+		"Linux",
+		"Android"
+	],
 	"Description": "Pax — simulador de Formula 1 (Unreal Engine 5 + Chaos Vehicles).",
 	"Modules": [
 		{
@@ -22,6 +27,10 @@
 		},
 		{
 			"Name": "EnhancedInput",
+			"Enabled": true
+		},
+		{
+			"Name": "ProceduralMeshComponent",
 			"Enabled": true
 		},
 		{

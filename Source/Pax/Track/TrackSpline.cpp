@@ -3,6 +3,8 @@
 #include "TrackSpline.h"
 #include "Pax.h"
 #include "Components/SplineComponent.h"
+#include "ProceduralMeshComponent.h"
+#include "Engine/CollisionProfile.h"
 #include "EngineUtils.h"
 #include "Misc/FileHelper.h"
 #include "Misc/Paths.h"
@@ -24,6 +26,13 @@ ATrackSpline::ATrackSpline()
 	PitLane->SetupAttachment(CenterLine);
 	PitLane->SetClosedLoop(false);
 	PitLane->ClearSplinePoints(true);
+
+	RoadMesh = CreateDefaultSubobject<UProceduralMeshComponent>(TEXT("RoadMesh"));
+	RoadMesh->SetupAttachment(CenterLine);
+	RoadMesh->SetCollisionProfileName(UCollisionProfile::BlockAll_ProfileName);
+	// La calzada no tiene volumen: su colisión sólo puede ser la malla exacta.
+	RoadMesh->bUseComplexAsSimpleCollision = true;
+	RoadMesh->SetCastShadow(false);
 
 	// Trazado por defecto para que el proyecto sea jugable en un nivel vacío:
 	// un circuito de ~4,3 km con recta principal, horquilla y sección rápida.
@@ -89,6 +98,141 @@ void ATrackSpline::BeginPlay()
 	if (GetTrackLength() <= 0.f)
 	{
 		UE_LOG(LogPax, Error, TEXT("ATrackSpline '%s' no tiene spline central: el cronometraje y la IA no funcionarán."), *GetName());
+		return;
+	}
+
+	if (bBuildRuntimeMesh)
+	{
+		BuildRuntimeMesh();
+	}
+}
+
+namespace
+{
+	/**
+	 * Añade un triángulo con la orientación que deja su normal apuntando hacia
+	 * DesiredNormal.
+	 *
+	 * Es preferible a memorizar un orden de índices: el criterio de caras
+	 * frontales depende del sistema de coordenadas del motor, y equivocarse
+	 * produce un circuito que se ve desde abajo pero no desde arriba. Aquí la
+	 * orientación se comprueba con la propia geometría, y el coste es nulo
+	 * porque la malla se construye una vez.
+	 */
+	void AppendTriangle(TArray<int32>& Triangles, const TArray<FVector>& Vertices,
+		int32 A, int32 B, int32 C, const FVector& DesiredNormal)
+	{
+		const FVector Face = FVector::CrossProduct(Vertices[C] - Vertices[B], Vertices[A] - Vertices[B]);
+		const bool bFacingRight = FVector::DotProduct(Face, DesiredNormal) >= 0.f;
+
+		Triangles.Add(A);
+		Triangles.Add(bFacingRight ? B : C);
+		Triangles.Add(bFacingRight ? C : B);
+	}
+}
+
+void ATrackSpline::BuildRuntimeMesh()
+{
+	if (!RoadMesh || !CenterLine || GetTrackLength() <= 0.f)
+	{
+		return;
+	}
+
+	RoadMesh->ClearAllMeshSections();
+
+	// Calzada, pianos a ambos lados, escapatoria a ambos lados y muros. Cada
+	// grupo va en su propia sección para poder darle su material.
+	const float KerbOuter = TrackHalfWidth + KerbWidth;
+	const float RunoffOuter = KerbOuter + RunoffWidth;
+
+	BuildRibbon(0, -TrackHalfWidth, TrackHalfWidth, 0.f, 0.f, false, AsphaltMaterial);
+	BuildRibbon(1, -TrackHalfWidth, -KerbOuter, 0.f, KerbHeight, false, KerbMaterial);
+	BuildRibbon(2, TrackHalfWidth, KerbOuter, 0.f, KerbHeight, false, KerbMaterial);
+	BuildRibbon(3, -KerbOuter, -RunoffOuter, KerbHeight, 0.f, false, RunoffMaterial);
+	BuildRibbon(4, KerbOuter, RunoffOuter, KerbHeight, 0.f, false, RunoffMaterial);
+	BuildRibbon(5, -RunoffOuter, -RunoffOuter, 0.f, WallHeight, true, WallMaterial);
+	BuildRibbon(6, RunoffOuter, RunoffOuter, 0.f, WallHeight, true, WallMaterial);
+
+	UE_LOG(LogPax, Log, TEXT("Calzada generada: %.2f km, %d secciones transversales."),
+		GetTrackLength() / 100000.f, MeshSamples);
+}
+
+void ATrackSpline::BuildRibbon(int32 SectionIndex, float InnerOffset, float OuterOffset,
+	float InnerHeight, float OuterHeight, bool bVertical, UMaterialInterface* Material)
+{
+	const float Length = GetTrackLength();
+	const int32 Samples = FMath::Max(MeshSamples, 8);
+
+	TArray<FVector> Vertices;
+	TArray<int32> Triangles;
+	TArray<FVector> Normals;
+	TArray<FVector2D> UVs;
+	TArray<FProcMeshTangent> Tangents;
+	TArray<FLinearColor> Colors;
+
+	Vertices.Reserve(Samples * 2);
+	Normals.Reserve(Samples * 2);
+	UVs.Reserve(Samples * 2);
+	Tangents.Reserve(Samples * 2);
+	Triangles.Reserve(Samples * 6);
+
+	// Los vértices se generan en espacio local del componente porque la malla
+	// procedural cuelga de la spline: si se generasen en mundo, mover el actor
+	// dejaría la calzada donde estaba.
+	const FTransform ToLocal = RoadMesh->GetComponentTransform().Inverse();
+
+	for (int32 Index = 0; Index < Samples; ++Index)
+	{
+		const float Distance = (static_cast<float>(Index) / Samples) * Length;
+		const FTransform Frame = GetTransformAtDistance(Distance);
+
+		const FVector Right = Frame.GetRotation().GetRightVector();
+		const FVector Up = Frame.GetRotation().GetUpVector();
+		const FVector Center = Frame.GetLocation();
+
+		const FVector Inner = Center + Right * InnerOffset + Up * InnerHeight;
+		const FVector Outer = Center + Right * OuterOffset + Up * OuterHeight;
+
+		Vertices.Add(ToLocal.TransformPosition(Inner));
+		Vertices.Add(ToLocal.TransformPosition(Outer));
+
+		// Un muro mira hacia la pista; el resto de cintas, hacia arriba.
+		const FVector Normal = bVertical
+			? (Right * -FMath::Sign(OuterOffset))
+			: Up;
+		const FVector LocalNormal = ToLocal.TransformVectorNoScale(Normal);
+		Normals.Add(LocalNormal);
+		Normals.Add(LocalNormal);
+
+		const FVector LocalTangent = ToLocal.TransformVectorNoScale(Frame.GetRotation().GetForwardVector());
+		Tangents.Add(FProcMeshTangent(LocalTangent, false));
+		Tangents.Add(FProcMeshTangent(LocalTangent, false));
+
+		// U recorre el ancho y V la longitud, ambos en múltiplos del tamaño de
+		// baldosa: así la textura no se estira en las curvas.
+		const float V = Distance / FMath::Max(TextureTileSize, 1.f);
+		UVs.Add(FVector2D(InnerOffset / FMath::Max(TextureTileSize, 1.f), V));
+		UVs.Add(FVector2D(OuterOffset / FMath::Max(TextureTileSize, 1.f), V));
+	}
+
+	for (int32 Index = 0; Index < Samples; ++Index)
+	{
+		const int32 A = Index * 2;
+		const int32 B = A + 1;
+		const int32 C = ((Index + 1) % Samples) * 2;
+		const int32 D = C + 1;
+
+		const FVector DesiredNormal = Normals[A];
+		AppendTriangle(Triangles, Vertices, A, B, C, DesiredNormal);
+		AppendTriangle(Triangles, Vertices, B, D, C, DesiredNormal);
+	}
+
+	RoadMesh->CreateMeshSection_LinearColor(SectionIndex, Vertices, Triangles, Normals, UVs,
+		Colors, Tangents, /*bCreateCollision=*/true);
+
+	if (Material)
+	{
+		RoadMesh->SetMaterial(SectionIndex, Material);
 	}
 }
 

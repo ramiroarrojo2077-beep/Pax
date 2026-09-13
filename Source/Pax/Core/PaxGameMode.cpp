@@ -60,10 +60,9 @@ void APaxGameMode::StartPlay()
 {
 	Super::StartPlay();
 
-	Track = ATrackSpline::Get(GetWorld());
-	if (!Track)
+	if (!EnsureTrack())
 	{
-		UE_LOG(LogPax, Error, TEXT("No hay ningún ATrackSpline en el nivel: no se puede formar la parrilla."));
+		UE_LOG(LogPax, Error, TEXT("No se ha podido obtener un circuito: no se puede formar la parrilla."));
 		return;
 	}
 
@@ -81,16 +80,35 @@ void APaxGameMode::StartPlay()
 	GetWorldTimerManager().SetTimer(StartSequenceTimer, this, &APaxGameMode::AdvanceStartLights, LightIntervalSeconds, true, 2.f);
 }
 
+ATrackSpline* APaxGameMode::EnsureTrack()
+{
+	if (Track)
+	{
+		return Track;
+	}
+
+	Track = ATrackSpline::Get(GetWorld());
+	if (Track)
+	{
+		return Track;
+	}
+
+	FActorSpawnParameters SpawnParams;
+	SpawnParams.SpawnCollisionHandlingOverride = ESpawnActorCollisionHandlingMethod::AlwaysSpawn;
+	Track = GetWorld()->SpawnActor<ATrackSpline>(ATrackSpline::StaticClass(), FTransform::Identity, SpawnParams);
+
+	if (Track)
+	{
+		UE_LOG(LogPax, Log, TEXT("El nivel no traía circuito: se ha creado uno con el trazado por defecto."));
+	}
+	return Track;
+}
+
 AF1Car* APaxGameMode::SpawnCarAtGrid(int32 GridPosition)
 {
 	// La parrilla la define el circuito, no los PlayerStart del nivel: así un
 	// mapa nuevo sólo necesita su spline para funcionar.
-	if (!Track)
-	{
-		Track = ATrackSpline::Get(GetWorld());
-	}
-
-	if (!Track || !CarClass)
+	if (!EnsureTrack() || !CarClass)
 	{
 		return nullptr;
 	}

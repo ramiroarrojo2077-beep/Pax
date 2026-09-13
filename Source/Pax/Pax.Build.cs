@@ -18,6 +18,7 @@ public class Pax : ModuleRules
 			"PhysicsCore",
 			"ChaosVehicles",
 			"ChaosVehiclesCore",
+			"ProceduralMeshComponent",
 			"AIModule",
 			"NavigationSystem",
 			"GameplayTasks",
