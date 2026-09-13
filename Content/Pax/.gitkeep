@@ -1,0 +1,2 @@
+Aquí se importan los FBX que genera Tools/Blender/build_assets.py.
+Los assets derivados no se versionan (ver .gitignore): se regeneran con un comando.

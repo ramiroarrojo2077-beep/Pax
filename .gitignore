@@ -1,0 +1,36 @@
+# ---------------------------------------------------------------------------
+# Unreal Engine
+# ---------------------------------------------------------------------------
+Binaries/
+DerivedDataCache/
+Intermediate/
+Saved/
+Build/
+.vs/
+.vscode/
+.idea/
+*.VC.db
+*.opensdf
+*.opendb
+*.sdf
+*.sln
+*.suo
+*.xcodeproj
+*.xcworkspace
+*.code-workspace
+
+# Assets binarios generados por el pipeline de Blender.
+# El .blend fuente y los scripts sí se versionan; los FBX/uasset derivados no.
+Content/**/*.fbx
+Content/**/*.uasset
+Content/**/*.umap
+Tools/Blender/Build/
+*.blend1
+*.blend2
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
