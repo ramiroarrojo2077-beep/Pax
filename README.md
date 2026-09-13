@@ -1,8 +1,15 @@
 # Pax
 
-Juego de Fórmula 1 para **Android** (APK) hecho con **Unreal Engine 5**, con los
-assets modelados de forma procedural en **Blender**. También se juega en PC con
-teclado o mando.
+Juego de Fórmula 1 en dos formas:
+
+* **`Web/index.html`** — versión jugable en el navegador, sin instalar nada.
+  Vista cenital, tres vueltas, cinco rivales, el mismo trazado. Un archivo, sin
+  dependencias.
+* **Proyecto de Unreal Engine 5** — la versión completa, para Android (APK) y
+  PC, con física Chaos Vehicles y los assets modelados en **Blender**.
+
+Las dos comparten trazado: los quince puntos de control del circuito son los
+mismos en `Web/index.html`, en `pax_blender/config.py` y en `ATrackSpline`.
 
 El proyecto es código: no hay ni un solo asset binario en el repositorio. El
 coche y el circuito se generan con scripts de Blender y se exportan a FBX; la
@@ -10,6 +17,7 @@ lógica de juego, la física, la IA, el input y la HUD están en C++. Eso hace q
 todo el juego se pueda revisar en un diff y regenerar desde cero con un comando.
 
 ```
+Web/index.html     versión jugable en el navegador
 Pax.uproject
 Config/            ajustes de motor, física, input y proyecto
 Source/Pax/
@@ -24,7 +32,15 @@ Config/Android/    ajustes de render, física y sesión para móvil
 Docs/              puesta en marcha, empaquetado del APK, arquitectura, pipeline
 ```
 
-## Puesta en marcha rápida
+## Jugar ahora
+
+Abre `Web/index.html` en cualquier navegador. `W` acelera, `S` frena, `A`/`D`
+giran, `R` te devuelve a la pista. En móvil aparecen los botones en pantalla.
+
+Es una versión reducida a lo esencial —conducir, adelantar y cronometrar—: sin
+ERS, neumáticos, combustible ni DRS. Esos están en la versión de Unreal.
+
+## Puesta en marcha del proyecto de Unreal
 
 ```bash
 # 1. Generar coche y circuito (Blender 3.6 LTS o superior)
