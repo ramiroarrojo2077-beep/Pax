@@ -3,8 +3,10 @@
 Juego de Fórmula 1 en dos formas:
 
 * **`Web/index.html`** — versión jugable en el navegador, sin instalar nada.
-  Vista cenital, tres vueltas, cinco rivales, el mismo trazado. Un archivo, sin
-  dependencias.
+  En 3D, con tres cámaras (persecutoria, casco y aérea), tres vueltas y cinco
+  rivales. Un archivo; la única dependencia es Three.js desde CDN.
+  `Web/classic-2d.html` conserva la versión cenital anterior, que no necesita
+  ni CDN.
 * **Proyecto de Unreal Engine 5** — la versión completa, para Android (APK) y
   PC, con física Chaos Vehicles y los assets modelados en **Blender**.
 
@@ -35,7 +37,12 @@ Docs/              puesta en marcha, empaquetado del APK, arquitectura, pipeline
 ## Jugar ahora
 
 Abre `Web/index.html` en cualquier navegador. `W` acelera, `S` frena, `A`/`D`
-giran, `R` te devuelve a la pista. En móvil aparecen los botones en pantalla.
+giran, `C` cambia de cámara y `R` te devuelve a la pista. En móvil aparecen los
+botones en pantalla.
+
+El circuito tiene relieve: el perfil de altura es el mismo que genera el
+pipeline de Blender, armónicos de periodo entero para que la vuelta cierre
+exactamente a la altura por la que empezó.
 
 Es una versión reducida a lo esencial —conducir, adelantar y cronometrar—: sin
 ERS, neumáticos, combustible ni DRS. Esos están en la versión de Unreal.

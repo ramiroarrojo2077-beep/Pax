@@ -2,18 +2,19 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap">
 <style>
-  /* Un solo mundo visual, deliberadamente oscuro en la interfaz sobre una
-     escena a contraluz de atardecer: es una pantalla de muro de boxes puesta
-     encima de la cámara de a bordo. Todos los colores van explícitos para que
-     la página no dependa del fondo del visor. */
+  /* Un solo mundo visual, deliberadamente oscuro: es una pantalla de
+     telemetría de muro de boxes. Todos los colores se pintan explícitamente
+     para que la página no dependa del fondo del visor. */
   :root {
     --ink:        #0b0c0f;
-    --panel:      rgba(12, 13, 17, 0.74);
-    --edge:       rgba(232, 230, 225, 0.16);
+    --panel:      rgba(12, 13, 17, 0.78);
+    --edge:       rgba(232, 230, 225, 0.14);
     --paper:      #eceae5;
-    --muted:      #918f8a;
+    --muted:      #8d8b86;
     --race-red:   #e5342b;
     --flag-green: #35c46f;
+    --sector:     #f0b429;
+    --cold:       #4aa3e8;
   }
 
   * { box-sizing: border-box; }
@@ -26,10 +27,11 @@
     font-family: "Barlow Condensed", "Arial Narrow", system-ui, sans-serif;
     overscroll-behavior: none;
   }
+
   body { overflow: hidden; }
 
   #stage { position: fixed; inset: 0; }
-  #stage canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+  #track { display: block; width: 100%; height: 100%; touch-action: none; }
 
   /* ---- HUD ------------------------------------------------------------- */
   .hud { position: fixed; inset: 0; pointer-events: none; }
@@ -39,79 +41,98 @@
     background: var(--panel);
     border: 1px solid var(--edge);
     padding: 10px 14px;
-    backdrop-filter: blur(4px);
+    backdrop-filter: blur(3px);
   }
 
   .label {
-    font-size: 11px; letter-spacing: 0.14em; text-transform: uppercase;
-    color: var(--muted); font-weight: 600;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--muted);
+    font-weight: 600;
   }
+
   .mono { font-family: "IBM Plex Mono", ui-monospace, monospace; font-variant-numeric: tabular-nums; }
 
+  /* Cronometraje, arriba a la izquierda */
   #timing { top: 16px; left: 16px; min-width: 178px; }
   #position { font-size: 40px; font-weight: 700; line-height: 0.9; }
   #position small { font-size: 18px; color: var(--muted); font-weight: 600; }
   #lapCount { font-size: 15px; letter-spacing: 0.06em; color: var(--muted); }
   #lapTime { font-size: 24px; margin-top: 6px; letter-spacing: -0.02em; }
   #bestTime { font-size: 13px; color: var(--muted); }
+  #bestTime.purple { color: var(--flag-green); }
 
-  #speedo { top: 16px; left: 50%; transform: translateX(-50%); display: flex; align-items: baseline; gap: 8px; }
-  #speed { font-size: 52px; font-weight: 700; line-height: 0.85; }
+  /* Velocidad, arriba al centro */
+  #speedo {
+    top: 16px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: baseline; gap: 8px;
+  }
+  #speed { font-size: 52px; font-weight: 700; line-height: 0.85; letter-spacing: -0.01em; }
   #speedUnit { font-size: 13px; color: var(--muted); letter-spacing: 0.1em; }
 
-  #standings { top: 16px; right: 16px; min-width: 194px; padding: 8px 12px; }
+  /* Clasificación, arriba a la derecha */
+  #standings { top: 16px; right: 16px; min-width: 190px; padding: 8px 12px; }
   #standings ol { margin: 4px 0 0; padding: 0; list-style: none; }
-  #standings li { display: flex; gap: 8px; align-items: baseline; font-size: 15px; line-height: 1.55; }
+  #standings li {
+    display: flex; gap: 8px; align-items: baseline;
+    font-size: 15px; line-height: 1.55;
+  }
   #standings li .pos { color: var(--muted); width: 14px; font-size: 12px; }
   #standings li .chip { width: 8px; height: 8px; flex: none; }
   #standings li .who { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   #standings li .gap { font-size: 12px; color: var(--muted); }
   #standings li.me .who { color: var(--race-red); font-weight: 600; }
 
+  /* Minimapa, abajo a la izquierda */
   #mapPanel { bottom: 16px; left: 16px; padding: 8px; }
   #map { display: block; }
   #mapPanel .label { margin-top: 4px; }
 
-  #viewTag { bottom: 16px; left: 50%; transform: translateX(-50%); padding: 6px 12px; }
-
+  /* Semáforo */
   #lights {
-    position: absolute; top: 16%; left: 50%; transform: translateX(-50%);
+    position: absolute; top: 18%; left: 50%; transform: translateX(-50%);
     display: flex; gap: 12px; padding: 14px;
-    background: rgba(6, 7, 9, 0.82); border: 1px solid var(--edge);
+    background: rgba(6, 7, 9, 0.85); border: 1px solid var(--edge);
   }
-  #lights div { width: 34px; height: 34px; border-radius: 50%; background: #1b1c20; border: 1px solid rgba(255,255,255,.07); }
+  #lights div {
+    width: 34px; height: 34px; border-radius: 50%;
+    background: #1b1c20; border: 1px solid rgba(255,255,255,.07);
+  }
   #lights div.on { background: var(--race-red); box-shadow: 0 0 18px rgba(229,52,43,.55); }
-  .hidden { display: none !important; }
+  #lights.hidden, .hidden { display: none !important; }
 
   #flash {
-    position: absolute; top: 28%; left: 50%; transform: translateX(-50%);
-    font-size: 34px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
-    text-shadow: 0 2px 16px rgba(0,0,0,.9); transition: opacity .4s ease; opacity: 0;
+    position: absolute; top: 30%; left: 50%; transform: translateX(-50%);
+    font-size: 34px; font-weight: 700; letter-spacing: 0.06em;
+    text-transform: uppercase; text-shadow: 0 2px 14px rgba(0,0,0,.8);
+    transition: opacity .4s ease; opacity: 0;
   }
 
   /* ---- Mando táctil ---------------------------------------------------- */
   #touch { position: fixed; inset: 0; pointer-events: none; }
   #touch button {
     position: absolute; pointer-events: auto;
-    background: rgba(236, 234, 229, 0.1);
-    border: 1px solid rgba(236, 234, 229, 0.32);
+    background: rgba(236, 234, 229, 0.09);
+    border: 1px solid rgba(236, 234, 229, 0.3);
     color: var(--paper);
     font-family: inherit; font-size: 15px; font-weight: 600;
     letter-spacing: 0.1em; text-transform: uppercase;
-    -webkit-tap-highlight-color: transparent; user-select: none; touch-action: none;
+    -webkit-tap-highlight-color: transparent; user-select: none;
+    touch-action: none;
   }
-  #touch button.down { background: rgba(236, 234, 229, 0.27); }
+  #touch button.down { background: rgba(236, 234, 229, 0.26); }
   #btnLeft  { left: 16px;  bottom: 16px; width: 84px; height: 96px; }
   #btnRight { left: 108px; bottom: 16px; width: 84px; height: 96px; }
   #btnBrake { right: 116px; bottom: 16px; width: 96px; height: 96px; }
-  #btnGas   { right: 16px;  bottom: 16px; width: 92px; height: 128px; background: rgba(53,196,111,.17); border-color: rgba(53,196,111,.45); }
-  #btnGas.down { background: rgba(53,196,111,.35); }
+  #btnGas   { right: 16px;  bottom: 16px; width: 92px; height: 128px; background: rgba(53,196,111,.16); border-color: rgba(53,196,111,.45); }
+  #btnGas.down { background: rgba(53,196,111,.34); }
 
   /* ---- Pantallas ------------------------------------------------------- */
   .screen {
     position: fixed; inset: 0; z-index: 5;
     display: grid; place-items: center;
-    background: rgba(8, 9, 12, 0.92);
+    background: rgba(8, 9, 12, 0.9);
     padding: 24px 20px;
   }
   .card { width: min(560px, 100%); }
@@ -127,14 +148,16 @@
   .keys { display: grid; grid-template-columns: auto 1fr; gap: 6px 14px; margin-bottom: 26px; font-size: 15px; }
   .keys kbd {
     font-family: "IBM Plex Mono", monospace; font-size: 12px;
-    border: 1px solid var(--edge); padding: 2px 7px; color: var(--paper); background: rgba(255,255,255,.04);
+    border: 1px solid var(--edge); padding: 2px 7px; color: var(--paper);
+    background: rgba(255,255,255,.04);
   }
   .keys span { color: var(--muted); }
 
   button.cta {
     font-family: inherit; font-size: 19px; font-weight: 700;
     letter-spacing: 0.12em; text-transform: uppercase;
-    background: var(--race-red); color: #fff; border: 0; padding: 14px 32px; cursor: pointer;
+    background: var(--race-red); color: #fff; border: 0;
+    padding: 14px 32px; cursor: pointer;
   }
   button.cta:hover { background: #f1463d; }
   button.cta:focus-visible { outline: 2px solid var(--paper); outline-offset: 3px; }
@@ -150,18 +173,17 @@
   table.results td.chipcell { width: 16px; }
   table.results i { display: inline-block; width: 9px; height: 9px; }
 
-  #loadError { max-width: 460px; line-height: 1.5; }
-  #loadError code { font-family: "IBM Plex Mono", monospace; font-size: 13px; color: var(--muted); }
-
-  @media (max-width: 760px) {
-    #standings, #mapPanel, #viewTag { display: none; }
+  @media (max-width: 720px) {
+    #standings, #mapPanel { display: none; }
     #speed { font-size: 40px; }
     #position { font-size: 32px; }
   }
-  @media (prefers-reduced-motion: reduce) { #flash { transition: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    #flash { transition: none; }
+  }
 </style>
 
-<div id="stage"></div>
+<div id="stage"><canvas id="track"></canvas></div>
 
 <div class="hud">
   <div class="panel" id="timing">
@@ -186,8 +208,6 @@
     <canvas id="map" width="168" height="120"></canvas>
     <div class="label">Pax International · 6,99 km</div>
   </div>
-
-  <div class="panel" id="viewTag"><span class="label" id="viewName">Cámara persecutoria · C</span></div>
 
   <div id="lights" class="hidden"><div></div><div></div><div></div><div></div><div></div></div>
   <div id="flash"></div>
@@ -217,7 +237,6 @@
       <kbd>W</kbd><span>Acelerar &nbsp;·&nbsp; también ↑</span>
       <kbd>S</kbd><span>Frenar &nbsp;·&nbsp; también ↓</span>
       <kbd>A D</kbd><span>Girar &nbsp;·&nbsp; también ← →</span>
-      <kbd>C</kbd><span>Cambiar de cámara: persecutoria, casco, aérea</span>
       <kbd>R</kbd><span>Volver a la pista si te quedas cruzado</span>
     </div>
 
@@ -238,42 +257,16 @@
   </div>
 </div>
 
-<div class="screen hidden" id="errScreen">
-  <div class="card" id="loadError">
-    <div class="eyebrow">No se pudo cargar</div>
-    <h1>Sin 3D</h1>
-    <p class="sub">La librería de gráficos no llegó a descargarse, así que no hay nada que dibujar. Suele ser un bloqueo de red o una extensión del navegador.</p>
-    <p class="sub">Recarga la página. Si vuelve a fallar, el juego en dos dimensiones no necesita librerías: está en el repositorio como <code>Web/classic-2d.html</code>.</p>
-  </div>
-</div>
-
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script>
-  // Si cdnjs no responde se intenta jsdelivr, el otro origen de scripts que
-  // admite la política de contenido. document.write funciona aquí porque el
-  // documento aún se está analizando.
-  if (!window.THREE) {
-    document.write('<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"><\/script>');
-  }
-</script>
 <script>
 (() => {
   "use strict";
-
-  if (!window.THREE) {
-    document.getElementById("startScreen").classList.add("hidden");
-    document.getElementById("errScreen").classList.remove("hidden");
-    return;
-  }
 
   // ===================================================================
   // Trazado
   //
   // Los quince puntos de control son los mismos que usa el proyecto de
-  // Unreal (Tools/Blender/pax_blender/config.py y ATrackSpline), en metros,
-  // interpolados igual con Catmull-Rom. El perfil de altura también sale de
-  // allí: armónicos de periodo entero, para que el circuito cierre
-  // exactamente a la altura por la que empezó.
+  // Unreal (Tools/Blender/pax_blender/config.py y ATrackSpline), en metros.
+  // Se interpolan con Catmull-Rom, que pasa exactamente por ellos.
   // ===================================================================
   const CONTROL = [
     [0, 0], [1200, 0], [1650, 180], [1720, 620], [1400, 880], [960, 800],
@@ -281,19 +274,11 @@
     [-460, 1000], [-300, 580], [-540, 260], [-300, -20]
   ];
   const SAMPLES_PER_SEG = 40;
-  const HALF_WIDTH = 6;
+  const HALF_WIDTH = 6;      // 12 m de asfalto
   const KERB = 1.4;
-  const RUNOFF = 16;
-  const WALL_H = 2.2;
+  const RUNOFF = 14;
 
-  function harmonics(u) {
-    return 6 * Math.sin(2 * Math.PI * u)
-         + 3 * Math.sin(4 * Math.PI * u + 1.1)
-         + 1.5 * Math.sin(6 * Math.PI * u + 0.4);
-  }
-  const ELEV0 = harmonics(0);
-
-  const P = [];
+  const P = [];              // puntos del eje {x, y}
   (() => {
     const n = CONTROL.length;
     for (let i = 0; i < n; i++) {
@@ -310,6 +295,7 @@
   })();
 
   const NS = P.length;
+  // Tangente, normal, distancia acumulada y curvatura de cada muestra.
   const cum = new Float64Array(NS + 1);
   for (let i = 0; i < NS; i++) {
     const a = P[i], b = P[(i + 1) % NS];
@@ -322,11 +308,12 @@
     const tx = next.x - prev.x, ty = next.y - prev.y;
     const L = Math.hypot(tx, ty) || 1;
     P[i].tx = tx / L; P[i].ty = ty / L;
-    P[i].nx = P[i].ty; P[i].ny = -P[i].tx;
+    P[i].nx = P[i].ty; P[i].ny = -P[i].tx;   // normal hacia la derecha
     P[i].d = cum[i];
-    P[i].z = harmonics(i / NS) - ELEV0;
   }
   for (let i = 0; i < NS; i++) {
+    // Curvatura por diferencia de rumbo sobre ~24 m: filtra el ruido de la
+    // interpolación sin perder el radio de las curvas lentas.
     const a = P[(i - 1 + NS) % NS], b = P[(i + 1) % NS];
     let dh = Math.atan2(b.ty, b.tx) - Math.atan2(a.ty, a.tx);
     while (dh > Math.PI) dh -= 2 * Math.PI;
@@ -335,6 +322,7 @@
     P[i].curv = Math.abs(dh) / Math.max(Math.abs(ds) || 1, 1);
   }
 
+  /** Punto y rumbo del eje a una distancia dada. */
   function atDistance(d) {
     d = ((d % LENGTH) + LENGTH) % LENGTH;
     let lo = 0, hi = NS;
@@ -347,34 +335,40 @@
   }
 
   // ===================================================================
-  // Carrera: mismos parámetros y mismo modelo que la versión de dos
-  // dimensiones. El paso a 3D cambia cómo se ve, no cómo se conduce.
+  // Coches
   // ===================================================================
   const NAMES  = ["M. Varela", "L. Ferrand", "K. Nakano", "R. Oduya", "S. Bergmann"];
   const COLORS = ["#3f8fd6", "#e0b83a", "#5fc98b", "#b073d6", "#e08a3a"];
   const TOTAL_LAPS = 3;
 
-  const MAX_SPEED = 92;
-  const POWER     = 26;
-  const BRAKE     = 48;
-  const DRAG      = 0.0032;
-  const YAW_RATE  = 2.1;
-  const GRIP_ON   = 7.5;
-  const GRIP_OFF  = 2.2;
+  const MAX_SPEED   = 92;    // m/s ≈ 331 km/h
+  const POWER       = 26;    // aceleración a baja velocidad, m/s²
+  const BRAKE       = 48;    // frenada, m/s² (unos 5 G, como un F1 real)
+  const DRAG        = 0.0032;
+  const YAW_RATE    = 2.1;   // rad/s a velocidad de trabajo
+  const GRIP_ON     = 7.5;   // agarre lateral en asfalto
+  const GRIP_OFF    = 2.2;   // fuera de pista
 
-  let cars = [], player = null;
+  let cars = [], player = null, skid = [];
 
   function makeCar(name, color, isPlayer, gridSlot) {
-    const s = atDistance(90 - gridSlot * 9);
-    const p = P[s.i];
+    // Parrilla en zigzag justo pasada la línea de meta, para que el primer
+    // cruce ya complete la vuelta 1.
+    const d = 90 - gridSlot * 9;
+    const s = atDistance(d);
     const lateral = (gridSlot % 2 === 0) ? -3 : 3;
+    const p = P[s.i];
     return {
       name, color, isPlayer,
-      x: s.x + p.nx * lateral, y: s.y + p.ny * lateral, z: p.z,
-      h: s.h, vx: 0, vy: 0,
+      x: s.x + p.nx * lateral,
+      y: s.y + p.ny * lateral,
+      h: s.h,
+      vx: 0, vy: 0,
       idx: s.i, laps: 0, lapT: 0, best: 0, total: 0, finished: false,
       steer: 0, throttle: 0, brake: 0,
-      speed: 0, slip: 0, lateral: 0, onTrack: true, roll: 0, pitch: 0,
+      speed: 0, slip: 0, lateral: 0, onTrack: true,
+      // Cada piloto usa una fracción distinta del agarre disponible: ahí está
+      // casi toda la diferencia entre el primero y el último de la parrilla.
       latAccel: isPlayer ? 0 : 25.5 - gridSlot * 0.55,
       line: isPlayer ? 0 : (Math.random() * 3 - 1.5),
       pos: gridSlot + 1
@@ -387,8 +381,10 @@
     player = makeCar("Tú", "#e5342b", true, NAMES.length);
     cars.push(player);
     for (const car of cars) updateIndex(car);
+    skid = [];
   }
 
+  /** Muestra del eje más cercana, buscando alrededor de la última conocida. */
   function updateIndex(car) {
     let best = car.idx, bestD = Infinity;
     for (let k = -12; k <= 40; k++) {
@@ -399,17 +395,9 @@
     }
     const crossed = car.idx > NS * 0.85 && best < NS * 0.15;
     car.idx = best;
-
-    const p = P[best], q = P[(best + 1) % NS];
+    const p = P[best];
     car.lateral = (car.x - p.x) * p.nx + (car.y - p.y) * p.ny;
     car.onTrack = Math.abs(car.lateral) <= HALF_WIDTH + KERB;
-
-    // Altura y pendiente: el coche se pega al perfil del trazado en lugar de
-    // simular suspensión, que a esta escala no se notaría.
-    const segLen = Math.max(cum[best + 1] - cum[best], 0.001);
-    const t = Math.max(0, Math.min(1, ((car.x - p.x) * p.tx + (car.y - p.y) * p.ty) / segLen));
-    car.z = p.z + (q.z - p.z) * t;
-    car.pitch = Math.atan2(q.z - p.z, segLen);
     return crossed;
   }
 
@@ -421,15 +409,21 @@
     const grip = car.onTrack ? GRIP_ON : GRIP_OFF;
     const topSpeed = car.onTrack ? MAX_SPEED : 46;
 
+    // Motor y freno
     if (car.throttle > 0) vLong += car.throttle * POWER * Math.max(0, 1 - vLong / topSpeed) * dt;
     if (car.brake > 0)    vLong -= car.brake * BRAKE * dt * (vLong > 0 ? 1 : 0);
     vLong -= DRAG * vLong * Math.abs(vLong) * dt;
     if (vLong < 0) vLong = 0;
 
+    // Dirección: el coche no gira parado, y el ángulo útil cae con la
+    // velocidad, que es lo que impide tirarlo de un volantazo en recta.
     const speedFactor = Math.min(1, vLong / 14) * (1 - 0.55 * Math.min(1, vLong / MAX_SPEED));
     car.h += car.steer * YAW_RATE * speedFactor * dt;
 
+    // El agarre lateral come la deriva. Cuando no da abasto, el coche
+    // derrapa: la velocidad deja de apuntar donde mira el morro.
     vLat *= Math.exp(-grip * dt);
+    // Derrapar cuesta velocidad.
     vLong -= Math.min(Math.abs(vLat) * 0.9, vLong * 0.6) * dt;
 
     const c2 = Math.cos(car.h), s2 = Math.sin(car.h);
@@ -440,18 +434,20 @@
     car.speed = vLong;
     car.slip = Math.abs(vLat);
 
-    // Balanceo: el coche se apoya sobre el lado de fuera de la curva. Es
-    // decorativo, pero es lo que hace que en 3D se lea que estás girando.
-    const wantRoll = -car.steer * Math.min(vLong / MAX_SPEED, 1) * 0.07;
-    car.roll += (wantRoll - car.roll) * Math.min(1, dt * 6);
+    if (car.slip > 6 && skid.length < 500) {
+      skid.push({ x: car.x, y: car.y, a: 1 });
+    }
   }
 
+  /** Velocidad máxima de paso por una curva de radio R. */
   function cornerSpeed(curv, latAccel) {
     if (curv < 1e-6) return MAX_SPEED;
     return Math.min(MAX_SPEED, Math.sqrt(latAccel / curv));
   }
 
   function driveAI(car, dt) {
+    // Punto objetivo: más lejos cuanto más rápido se va. Mirar cerca a 300
+    // km/h produce el zigzag típico de una IA mal ajustada.
     const ahead = 18 + car.speed * 0.75;
     const t = atDistance(P[car.idx].d + ahead);
     const p = P[t.i];
@@ -462,11 +458,12 @@
     while (err < -Math.PI) err += 2 * Math.PI;
     car.steer = Math.max(-1, Math.min(1, err * 2.4));
 
+    // Velocidad objetivo: la más restrictiva de las curvas que vienen,
+    // contando con que hasta ellas se puede frenar.
     let target = MAX_SPEED;
-    const perSample = LENGTH / NS;
     for (let m = 0; m < 26; m++) {
       const s = 10 * m;
-      const i = (car.idx + Math.round(s / perSample)) % NS;
+      const i = (car.idx + Math.round(s / (LENGTH / NS))) % NS;
       const vC = cornerSpeed(P[i].curv, car.latAccel);
       target = Math.min(target, Math.sqrt(vC * vC + 2 * BRAKE * 0.8 * s));
     }
@@ -484,291 +481,13 @@
   }
 
   // ===================================================================
-  // Escena
-  // ===================================================================
-  const SKY_HIGH = 0x2a3c52;
-  const SKY_LOW  = 0xd98b4a;
-  // La niebla tiene que morir en el mismo tono que el horizonte del cielo; si
-  // no, aparece una línea de corte donde acaba el terreno.
-  const FOG_COL  = 0xa08a72;
-
-  const stage = document.getElementById("stage");
-  const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: "high-performance" });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 1.75));
-  stage.appendChild(renderer.domElement);
-
-  const scene = new THREE.Scene();
-  scene.background = new THREE.Color(SKY_LOW);
-  scene.fog = new THREE.Fog(FOG_COL, 260, 1400);
-
-  const camera = new THREE.PerspectiveCamera(62, 1, 0.5, 1700);
-
-  // Sol bajo de atardecer: alarga las sombras del relieve y deja el rojo del
-  // coche como lo más saturado de la escena.
-  const sun = new THREE.DirectionalLight(0xffe2bc, 1.85);
-  sun.position.set(-620, 260, 420);
-  scene.add(sun);
-  scene.add(new THREE.HemisphereLight(0xbcd0e4, 0x6b6450, 1.05));
-
-  /** Cúpula de cielo con degradado vertical, por vértices. */
-  (() => {
-    const geo = new THREE.SphereGeometry(1500, 24, 14);
-    const col = [];
-    const pos = geo.attributes.position;
-    const high = new THREE.Color(SKY_HIGH), low = new THREE.Color(SKY_LOW);
-    for (let i = 0; i < pos.count; i++) {
-      const t = Math.max(0, Math.min(1, (pos.getY(i) / 1500) * 1.6 + 0.12));
-      const c = low.clone().lerp(high, Math.pow(t, 0.65));
-      col.push(c.r, c.g, c.b);
-    }
-    geo.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
-    const mesh = new THREE.Mesh(geo, new THREE.MeshBasicMaterial({
-      vertexColors: true, side: THREE.BackSide, fog: false
-    }));
-    scene.add(mesh);
-  })();
-
-  /** Cinta cerrada entre dos desplazamientos laterales de la spline. */
-  function stripGeometry(latA, hA, latB, hB, vertical) {
-    const pos = [], nor = [], idx = [];
-    for (let i = 0; i < NS; i++) {
-      const p = P[i];
-      pos.push(p.x + p.nx * latA, p.z + hA, p.y + p.ny * latA);
-      pos.push(p.x + p.nx * latB, p.z + hB, p.y + p.ny * latB);
-      // Normal explícita: calcularla por winding es la forma clásica de
-      // acabar con media pista en sombra.
-      const n = vertical
-        ? [-p.nx * Math.sign(latB || 1), 0, -p.ny * Math.sign(latB || 1)]
-        : [0, 1, 0];
-      nor.push(n[0], n[1], n[2], n[0], n[1], n[2]);
-    }
-    for (let i = 0; i < NS; i++) {
-      const a = i * 2, b = a + 1, c = ((i + 1) % NS) * 2, d = c + 1;
-      idx.push(a, b, c, b, d, c);
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-    g.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
-    g.setIndex(idx);
-    return g;
-  }
-
-  function surface(geo, color) {
-    return new THREE.Mesh(geo, new THREE.MeshLambertMaterial({
-      color, side: THREE.DoubleSide
-    }));
-  }
-
-  /** Bandas a rayas (pianos, muros): un quad suelto por tramo, sin compartir
-      vértices, para que el corte de color sea limpio y no un degradado. */
-  function stripedGeometry(latA, hA, latB, hB, vertical, colorA, colorB, every) {
-    const pos = [], nor = [], col = [];
-    const cA = new THREE.Color(colorA), cB = new THREE.Color(colorB);
-    for (let i = 0; i < NS; i += every) {
-      const p = P[i], q = P[(i + every) % NS];
-      const c = ((i / every) % 2) ? cB : cA;
-      const n = vertical
-        ? [-p.nx * Math.sign(latB || 1), 0, -p.ny * Math.sign(latB || 1)]
-        : [0, 1, 0];
-      const quad = [
-        [p.x + p.nx * latA, p.z + hA, p.y + p.ny * latA],
-        [p.x + p.nx * latB, p.z + hB, p.y + p.ny * latB],
-        [q.x + q.nx * latA, q.z + hA, q.y + q.ny * latA],
-        [q.x + q.nx * latB, q.z + hB, q.y + q.ny * latB]
-      ];
-      for (const t of [[0,1,2],[1,3,2]]) {
-        for (const k of t) {
-          pos.push(quad[k][0], quad[k][1], quad[k][2]);
-          nor.push(n[0], n[1], n[2]);
-          col.push(c.r, c.g, c.b);
-        }
-      }
-    }
-    const g = new THREE.BufferGeometry();
-    g.setAttribute("position", new THREE.Float32BufferAttribute(pos, 3));
-    g.setAttribute("normal", new THREE.Float32BufferAttribute(nor, 3));
-    g.setAttribute("color", new THREE.Float32BufferAttribute(col, 3));
-    return g;
-  }
-
-  // --- Terreno y trazado -------------------------------------------------
-  (() => {
-    const ground = new THREE.Mesh(
-      new THREE.PlaneGeometry(7000, 7000),
-      new THREE.MeshLambertMaterial({ color: 0x59654a })
-    );
-    ground.rotation.x = -Math.PI / 2;
-    ground.position.y = -22;
-    scene.add(ground);
-
-    const kerbOut = HALF_WIDTH + KERB;
-    const runoffOut = kerbOut + RUNOFF;
-
-    // Falda de hierba que sigue el relieve del trazado y baja hasta el plano
-    // del suelo. Sin ella, en las zonas altas del circuito se vería el vacío
-    // entre el borde de la escapatoria y el terreno, que está plano.
-    scene.add(surface(stripGeometry(-runoffOut - 260, -22, -runoffOut, -0.04, false), 0x5d6a4c));
-    scene.add(surface(stripGeometry(runoffOut, -0.04, runoffOut + 260, -22, false), 0x5d6a4c));
-
-    scene.add(surface(stripGeometry(-runoffOut, 0.0, runoffOut, 0.0, false), 0x7a7059));
-    scene.add(surface(stripGeometry(-HALF_WIDTH - 0.35, 0.1, HALF_WIDTH + 0.35, 0.1, false), 0xefece4));
-    scene.add(surface(stripGeometry(-HALF_WIDTH, 0.2, HALF_WIDTH, 0.2, false), 0x6a6d75));
-
-    const kerbMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
-    scene.add(new THREE.Mesh(stripedGeometry(-HALF_WIDTH, 0.18, -kerbOut, 0.32, false, 0xc8322c, 0xd9d5cd, 2), kerbMat));
-    scene.add(new THREE.Mesh(stripedGeometry(HALF_WIDTH, 0.18, kerbOut, 0.32, false, 0xc8322c, 0xd9d5cd, 2), kerbMat));
-
-    const wallMat = new THREE.MeshLambertMaterial({ vertexColors: true, side: THREE.DoubleSide });
-    scene.add(new THREE.Mesh(stripedGeometry(-runoffOut, 0.0, -runoffOut, WALL_H, true, 0xd8d4cb, 0xc8322c, 4), wallMat));
-    scene.add(new THREE.Mesh(stripedGeometry(runoffOut, 0.0, runoffOut, WALL_H, true, 0xd8d4cb, 0xc8322c, 4), wallMat));
-
-    // Línea de meta a cuadros
-    const m = P[0];
-    const fg = new THREE.Group();
-    for (let k = -6; k < 6; k++) {
-      const q = new THREE.Mesh(
-        new THREE.PlaneGeometry(1, 2.6),
-        new THREE.MeshLambertMaterial({ color: (k % 2) ? 0xe8e6e1 : 0x1b1c20, side: THREE.DoubleSide })
-      );
-      q.rotation.x = -Math.PI / 2;
-      q.rotation.z = -Math.atan2(m.ty, m.tx);
-      q.position.set(m.x + m.nx * (k + 0.5), m.z + 0.26, m.y + m.ny * (k + 0.5));
-      fg.add(q);
-    }
-    scene.add(fg);
-
-    // Arbolado fuera de la escapatoria: da referencia de velocidad, que es lo
-    // que más se echa de menos al pasar de vista cenital a cámara baja.
-    const treeGeo = new THREE.ConeGeometry(3.4, 13, 6);
-    const treeMat = new THREE.MeshLambertMaterial({ color: 0x44553a });
-    const trees = new THREE.InstancedMesh(treeGeo, treeMat, 420);
-    const mtx = new THREE.Matrix4();
-    for (let n = 0; n < 420; n++) {
-      const p = P[(n * 7) % NS];
-      const side = (n % 2) ? 1 : -1;
-      const off = runoffOut + 8 + Math.random() * 60;
-      const jitter = (Math.random() - 0.5) * 30;
-      mtx.makeTranslation(
-        p.x + p.nx * off * side + p.tx * jitter,
-        p.z + 6,
-        p.y + p.ny * off * side + p.ty * jitter
-      );
-      trees.setMatrixAt(n, mtx);
-    }
-    trees.instanceMatrix.needsUpdate = true;
-    scene.add(trees);
-  })();
-
-  // --- Coches ------------------------------------------------------------
-  const shadowTex = (() => {
-    const c = document.createElement("canvas");
-    c.width = c.height = 64;
-    const g = c.getContext("2d");
-    const grad = g.createRadialGradient(32, 32, 2, 32, 32, 30);
-    grad.addColorStop(0, "rgba(0,0,0,.55)");
-    grad.addColorStop(1, "rgba(0,0,0,0)");
-    g.fillStyle = grad;
-    g.fillRect(0, 0, 64, 64);
-    return new THREE.CanvasTexture(c);
-  })();
-
-  const wheelGeo = new THREE.CylinderGeometry(0.36, 0.36, 0.36, 14);
-  wheelGeo.rotateX(Math.PI / 2);   // el eje de giro pasa a ser transversal
-  const wheelMat = new THREE.MeshLambertMaterial({ color: 0x2a2b30 });
-  const darkMat = new THREE.MeshLambertMaterial({ color: 0x33353c });
-
-  function buildCarMesh(color) {
-    // El grupo exterior lleva el rumbo; el interior, cabeceo y balanceo.
-    const group = new THREE.Group();
-    const body = new THREE.Group();
-    group.add(body);
-
-    const paint = new THREE.MeshLambertMaterial({ color: new THREE.Color(color) });
-
-    const tub = new THREE.Mesh(new THREE.BoxGeometry(3.6, 0.36, 0.78), paint);
-    tub.position.set(-0.1, 0.46, 0);
-    body.add(tub);
-
-    const nose = new THREE.Mesh(new THREE.BoxGeometry(2.4, 0.22, 0.34), paint);
-    nose.position.set(2.15, 0.42, 0);
-    body.add(nose);
-
-    const pods = new THREE.Mesh(new THREE.BoxGeometry(2.2, 0.4, 1.74), paint);
-    pods.position.set(-0.45, 0.36, 0);
-    body.add(pods);
-
-    const airbox = new THREE.Mesh(new THREE.BoxGeometry(1.4, 0.46, 0.5), paint);
-    airbox.position.set(-0.85, 0.86, 0);
-    body.add(airbox);
-
-    const fWing = new THREE.Mesh(new THREE.BoxGeometry(0.62, 0.08, 2.0), darkMat);
-    fWing.position.set(2.82, 0.19, 0);
-    body.add(fWing);
-
-    const rWing = new THREE.Mesh(new THREE.BoxGeometry(0.46, 0.08, 1.05), darkMat);
-    rWing.position.set(-2.4, 1.02, 0);
-    body.add(rWing);
-
-    const rPylon = new THREE.Mesh(new THREE.BoxGeometry(0.26, 0.62, 0.1), darkMat);
-    rPylon.position.set(-2.36, 0.72, 0);
-    body.add(rPylon);
-
-    const helmet = new THREE.Mesh(new THREE.SphereGeometry(0.26, 10, 8),
-      new THREE.MeshLambertMaterial({ color: 0xf0b429 }));
-    helmet.position.set(0.5, 0.86, 0);
-    body.add(helmet);
-
-    const halo = new THREE.Mesh(new THREE.TorusGeometry(0.52, 0.045, 6, 14, Math.PI),
-      new THREE.MeshLambertMaterial({ color: 0x5c5c64 }));
-    halo.rotation.y = Math.PI / 2;
-    halo.position.set(0.45, 0.82, 0);
-    body.add(halo);
-
-    for (const [wx, wz] of [[1.8, -0.8], [1.8, 0.8], [-1.8, -0.78], [-1.8, 0.78]]) {
-      const w = new THREE.Mesh(wheelGeo, wheelMat);
-      w.position.set(wx, 0.36, wz);
-      w.scale.z = Math.abs(wx - 1.8) < 0.01 ? 0.85 : 1.15;  // traseras más anchas
-      body.add(w);
-    }
-
-    const shadow = new THREE.Mesh(
-      new THREE.PlaneGeometry(7, 3.4),
-      new THREE.MeshBasicMaterial({ map: shadowTex, transparent: true, depthWrite: false })
-    );
-    shadow.rotation.x = -Math.PI / 2;
-    shadow.position.y = 0.26;
-    group.add(shadow);
-
-    group.userData.body = body;
-    return group;
-  }
-
-  let carMeshes = [];
-  function buildCarMeshes() {
-    for (const m of carMeshes) scene.remove(m);
-    carMeshes = cars.map(c => {
-      const g = buildCarMesh(c.color);
-      scene.add(g);
-      return g;
-    });
-  }
-
-  // ===================================================================
   // Estado de carrera
   // ===================================================================
   const S = { WAIT: 0, COUNT: 1, RACE: 2, DONE: 3 };
   let state = S.WAIT, raceTime = 0, lights = 0, lightTimer = 0, holdFor = 0;
 
-  const VIEWS = [
-    { name: "Cámara persecutoria · C", back: 11, up: 4.2, look: 14, lag: 5 },
-    { name: "Cámara de casco · C",     back: -0.6, up: 1.25, look: 30, lag: 26 },
-    { name: "Cámara aérea · C",        back: 26, up: 20, look: 8, lag: 3.2 }
-  ];
-  let view = 0;
-
   function startCountdown() {
     resetRace();
-    buildCarMeshes();
     state = S.COUNT; raceTime = 0; lights = 0; lightTimer = 0;
     holdFor = 0.4 + Math.random() * 1.2;
     el.lights.classList.remove("hidden");
@@ -789,7 +508,8 @@
   function fmt(t) {
     if (!t || t <= 0) return "—:—.———";
     const m = Math.floor(t / 60);
-    return `${m}:${(t - m * 60).toFixed(3).padStart(6, "0")}`;
+    const s = (t - m * 60).toFixed(3).padStart(6, "0");
+    return `${m}:${s}`;
   }
 
   function progress(car) { return car.laps * LENGTH + P[car.idx].d; }
@@ -801,7 +521,7 @@
       else if (lights === 5 && lightTimer >= holdFor) {
         state = S.RACE; lights = 0; paintLights();
         el.lights.classList.add("hidden");
-        flash("¡Verde!", "#35c46f");
+        flash("¡Verde!", "var(--flag-green)");
       }
     }
 
@@ -819,10 +539,8 @@
       if (racing && !car.finished) {
         car.lapT += dt;
         if (crossed) {
-          if (!car.best || car.lapT < car.best) {
-            car.best = car.lapT;
-            if (car.isPlayer) flash("Vuelta rápida", "#35c46f");
-          }
+          if (!car.best || car.lapT < car.best) car.best = car.lapT;
+          if (car.isPlayer && car.best === car.lapT) flash("Vuelta rápida", "var(--flag-green)");
           car.laps++;
           car.total = raceTime;
           car.lapT = 0;
@@ -842,62 +560,138 @@
   // ===================================================================
   // Dibujo
   // ===================================================================
-  const camPos = new THREE.Vector3();
-  const camAim = new THREE.Vector3();
-  let camReady = false;
-
-  function syncMeshes() {
-    for (let i = 0; i < cars.length; i++) {
-      const car = cars[i], g = carMeshes[i];
-      if (!g) continue;
-      g.position.set(car.x, car.z, car.y);
-      g.rotation.y = -car.h;
-      g.userData.body.rotation.z = car.pitch;
-      g.userData.body.rotation.x = car.roll;
-    }
-  }
-
-  function updateCamera(dt) {
-    const v = VIEWS[view];
-    const fx = Math.cos(player.h), fy = Math.sin(player.h);
-
-    camAim.set(
-      player.x - fx * v.back,
-      player.z + v.up,
-      player.y - fy * v.back
-    );
-
-    if (!camReady) { camPos.copy(camAim); camReady = true; }
-    // Seguimiento exponencial: independiente de la tasa de refresco, y con
-    // el retardo justo para que se note la inercia sin marear.
-    camPos.lerp(camAim, 1 - Math.exp(-v.lag * dt));
-    camera.position.copy(camPos);
-    camera.lookAt(player.x + fx * v.look, player.z + 1.1, player.y + fy * v.look);
-
-    // Campo de visión que se abre con la velocidad: el truco más barato para
-    // que 300 km/h se sientan distintos de 150.
-    const want = 62 + Math.min(player.speed / MAX_SPEED, 1) * 16;
-    camera.fov += (want - camera.fov) * Math.min(1, dt * 3);
-    camera.updateProjectionMatrix();
-  }
+  const cv = document.getElementById("track");
+  const ctx = cv.getContext("2d");
+  const mapCv = document.getElementById("map");
+  const mapCtx = mapCv.getContext("2d");
+  let W = 0, H = 0, DPR = 1, zoom = 4.4;
 
   function resize() {
-    const w = Math.max(1, stage.clientWidth), h = Math.max(1, stage.clientHeight);
-    const c = renderer.domElement;
-    if (c.width === Math.round(w * renderer.getPixelRatio()) &&
-        c.height === Math.round(h * renderer.getPixelRatio())) return;
-    renderer.setSize(w, h, false);
-    camera.aspect = w / h;
-    camera.updateProjectionMatrix();
+    DPR = Math.min(window.devicePixelRatio || 1, 2);
+    W = window.innerWidth; H = window.innerHeight;
+    cv.width = W * DPR; cv.height = H * DPR;
+    cv.style.width = W + "px"; cv.style.height = H + "px";
+    ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
   }
   window.addEventListener("resize", resize);
 
-  // --- Minimapa ----------------------------------------------------------
-  const mapCv = document.getElementById("map");
-  const mapCtx = mapCv.getContext("2d");
-  let mapReady = false;
+  function ribbon(width, color, cap) {
+    ctx.beginPath();
+    ctx.moveTo(P[0].x, P[0].y);
+    for (let i = 1; i < NS; i++) ctx.lineTo(P[i].x, P[i].y);
+    ctx.closePath();
+    ctx.lineWidth = width;
+    ctx.strokeStyle = color;
+    ctx.lineJoin = "round";
+    ctx.lineCap = cap || "round";
+    ctx.stroke();
+  }
 
-  function renderMap() {
+  function drawKerbs(centerIdx) {
+    // Segmentos cortos alternando rojo y blanco a ambos lados del asfalto.
+    // Sólo se dibuja el tramo que cabe en pantalla: pintar los 7 km enteros
+    // son mil trazos por frame para nada.
+    const off = HALF_WIDTH + KERB * 0.5;
+    for (let side = -1; side <= 1; side += 2) {
+      for (let k = -50; k < 50; k++) {
+        const i = (centerIdx + k + NS) % NS;
+        const a = P[i], b = P[(i + 1) % NS];
+        ctx.beginPath();
+        ctx.moveTo(a.x + a.nx * off * side, a.y + a.ny * off * side);
+        ctx.lineTo(b.x + b.nx * off * side, b.y + b.ny * off * side);
+        ctx.lineWidth = KERB;
+        ctx.strokeStyle = i % 2 ? "#d9d5cd" : "#c8322c";
+        ctx.stroke();
+      }
+    }
+  }
+
+  function drawCar(car, scale) {
+    const L = 5.6, Wd = 2.0;
+    ctx.save();
+    ctx.translate(car.x, car.y);
+    ctx.rotate(car.h);
+
+    ctx.fillStyle = "rgba(0,0,0,.45)";
+    ctx.fillRect(-L / 2 + 0.4, -Wd / 2 + 0.4, L, Wd);
+
+    // Alerones, cuerpo y ruedas: cuatro trazos bastan para que se lea como
+    // un monoplaza y no como un ladrillo.
+    ctx.fillStyle = "#17181c";
+    ctx.fillRect(L / 2 - 0.5, -1.0, 0.5, 2.0);      // alerón delantero
+    ctx.fillRect(-L / 2, -0.55, 0.55, 1.1);          // alerón trasero
+    ctx.fillRect(1.3, -0.85, 1.3, 1.7);              // ruedas delanteras
+    ctx.fillRect(-2.3, -0.95, 1.4, 1.9);             // ruedas traseras
+
+    ctx.fillStyle = car.color;
+    ctx.beginPath();
+    ctx.moveTo(L / 2 - 0.4, -0.22);
+    ctx.lineTo(0.9, -0.42);
+    ctx.lineTo(-1.0, -0.55);
+    ctx.lineTo(-L / 2 + 0.3, -0.5);
+    ctx.lineTo(-L / 2 + 0.3, 0.5);
+    ctx.lineTo(-1.0, 0.55);
+    ctx.lineTo(0.9, 0.42);
+    ctx.lineTo(L / 2 - 0.4, 0.22);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = "#15161a";
+    ctx.beginPath(); ctx.arc(0.1, 0, 0.4, 0, Math.PI * 2); ctx.fill();
+    ctx.restore();
+
+    if (car.isPlayer && scale > 2) {
+      ctx.strokeStyle = "rgba(229,52,43,.5)";
+      ctx.lineWidth = 0.35;
+      ctx.beginPath(); ctx.arc(car.x, car.y, 5.5, 0, Math.PI * 2); ctx.stroke();
+    }
+  }
+
+  function render() {
+    ctx.fillStyle = "#141610";
+    ctx.fillRect(0, 0, W, H);
+
+    // La cámara se aleja con la velocidad: a 300 km/h hace falta ver más pista.
+    const want = 4.6 - Math.min(player.speed / MAX_SPEED, 1) * 1.5;
+    zoom += (want - zoom) * 0.04;
+
+    ctx.save();
+    ctx.translate(W / 2, H / 2);
+    ctx.scale(zoom, zoom);
+    ctx.translate(-player.x, -player.y);
+
+    ribbon((HALF_WIDTH + KERB + RUNOFF) * 2, "#3a352b");
+    drawKerbs(player.idx);
+    ribbon(HALF_WIDTH * 2, "#2b2d33");
+
+    // Eje discontinuo
+    ctx.setLineDash([6, 10]);
+    ribbon(0.22, "rgba(236,234,229,.16)", "butt");
+    ctx.setLineDash([]);
+
+    // Línea de meta a cuadros
+    const m = P[0];
+    for (let k = -6; k < 6; k++) {
+      ctx.fillStyle = (k % 2) ? "#e8e6e1" : "#1b1c20";
+      ctx.save();
+      ctx.translate(m.x + m.nx * (k + 0.5), m.y + m.ny * (k + 0.5));
+      ctx.rotate(Math.atan2(m.ty, m.tx));
+      ctx.fillRect(-1.4, -0.5, 2.8, 1);
+      ctx.restore();
+    }
+
+    for (const s of skid) {
+      ctx.fillStyle = `rgba(18,18,20,${0.5 * s.a})`;
+      ctx.fillRect(s.x - 0.5, s.y - 0.5, 1, 1);
+    }
+
+    for (const car of cars) if (!car.isPlayer) drawCar(car, zoom);
+    drawCar(player, zoom);
+    ctx.restore();
+  }
+
+  let mapReady = false;
+  function renderMap(order) {
     const mw = mapCv.width, mh = mapCv.height, pad = 10;
     if (!mapReady) {
       let minX = 1e9, maxX = -1e9, minY = 1e9, maxY = -1e9;
@@ -908,9 +702,11 @@
       mapCv._s = Math.min((mw - pad * 2) / (maxX - minX), (mh - pad * 2) / (maxY - minY));
       mapCv._ox = pad - minX * mapCv._s;
       mapCv._oy = pad - minY * mapCv._s;
+      mapCv._pad = pad;
       mapReady = true;
     }
     const s = mapCv._s, ox = mapCv._ox, oy = mapCv._oy;
+    // Y del mundo crece hacia el norte; en pantalla crece hacia abajo.
     const MX = x => ox + x * s;
     const MY = y => mh - (oy + y * s);
 
@@ -920,8 +716,8 @@
     for (let i = 2; i < NS; i += 2) mapCtx.lineTo(MX(P[i].x), MY(P[i].y));
     mapCtx.closePath();
     mapCtx.lineWidth = 3.5;
-    mapCtx.lineJoin = "round";
     mapCtx.strokeStyle = "rgba(236,234,229,.22)";
+    mapCtx.lineJoin = "round";
     mapCtx.stroke();
 
     for (const car of cars) {
@@ -944,7 +740,6 @@
     bestTime: document.getElementById("bestTime"),
     speed: document.getElementById("speed"),
     order: document.getElementById("order"),
-    viewName: document.getElementById("viewName"),
     start: document.getElementById("startScreen"),
     end: document.getElementById("endScreen"),
     touch: document.getElementById("touch")
@@ -998,20 +793,12 @@
   const touch = { left: false, right: false, gas: false, brake: false };
 
   addEventListener("keydown", e => {
-    const k = e.key.toLowerCase();
-    keys[k] = true;
-    if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(k)) e.preventDefault();
-    if (k === "r") recover();
-    if (k === "c") cycleView();
+    keys[e.key.toLowerCase()] = true;
+    if (["arrowup", "arrowdown", "arrowleft", "arrowright", " "].includes(e.key.toLowerCase())) e.preventDefault();
+    if (e.key.toLowerCase() === "r") recover();
   });
   addEventListener("keyup", e => { keys[e.key.toLowerCase()] = false; });
   addEventListener("blur", () => { for (const k in keys) keys[k] = false; });
-
-  function cycleView() {
-    view = (view + 1) % VIEWS.length;
-    el.viewName.textContent = VIEWS[view].name;
-    camReady = false;
-  }
 
   function bindButton(id, prop) {
     const b = document.getElementById(id);
@@ -1035,13 +822,13 @@
     player.brake = (keys["s"] || keys["arrowdown"] || touch.brake) ? 1 : 0;
   }
 
+  /** Devuelve el coche al eje, mirando hacia delante. */
   function recover() {
     if (state !== S.RACE) return;
     const p = P[player.idx];
-    player.x = p.x; player.y = p.y; player.z = p.z;
+    player.x = p.x; player.y = p.y;
     player.h = Math.atan2(p.ty, p.tx);
     player.vx = player.vy = 0;
-    camReady = false;
   }
 
   // ===================================================================
@@ -1054,25 +841,23 @@
     last = now;
     if (!dt || state === S.WAIT) return;
 
-    // Se comprueba cada frame en vez de esperar al evento: dentro de un visor
-    // embebido el tamaño cambia sin que llegue ningún resize.
-    resize();
-
     if (state === S.RACE) readInput();
     const order = updateRace(dt);
 
-    syncMeshes();
-    updateCamera(dt);
-    renderer.render(scene, camera);
+    for (let i = skid.length - 1; i >= 0; i--) {
+      skid[i].a -= dt * 0.12;
+      if (skid[i].a <= 0) skid.splice(i, 1);
+    }
+
+    render();
     renderHUD(order);
-    renderMap();
+    renderMap(order);
   }
 
   function begin() {
     el.start.classList.add("hidden");
     el.end.classList.add("hidden");
     if (matchMedia("(pointer: coarse)").matches) el.touch.classList.remove("hidden");
-    camReady = false;
     startCountdown();
   }
 
@@ -1081,10 +866,7 @@
 
   resize();
   resetRace();
-  buildCarMeshes();
-  syncMeshes();
-  updateCamera(1);
-  renderer.render(scene, camera);
+  render();
   requestAnimationFrame(frame);
 })();
 </script>
